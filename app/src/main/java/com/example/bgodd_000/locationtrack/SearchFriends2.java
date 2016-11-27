@@ -2,11 +2,9 @@ package com.example.bgodd_000.locationtrack;
 
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -30,13 +28,10 @@ import java.util.ArrayList;
 
 import de.greenrobot.event.EventBus;
 
-public class SearchFriends extends Fragment {
 
+public class SearchFriends2 extends AppCompatActivity{
 
     private static final String TAG = "SearchFriends";
-
-    View myFragment;
-
 
     //This arraylist will have data as pulled from database
     ArrayList<String> databaseResults = new ArrayList<>();
@@ -46,65 +41,25 @@ public class SearchFriends extends Fragment {
     private PrintWriter printwriter;
     BufferedReader din = null;
 
-    /*
-    OnNameSetListener onNameSetListener;
-
-    public interface OnNameSetListener{
-        public void setName(String name);
-    }
-
-    public void onAttach(Activity activity){
-        super.onAttach(activity);
-        try{
-            onNameSetListener = (OnNameSetListener) activity;
-        } catch(ClassCastException e){
-
-        }
-    }*/
-
-    public static final String PREFS2 = "usernamePrefs";
-    String username;
-    String friendname;
-    //String username2 = "Christian";
 
     @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_searchfriends);
 
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
-        myFragment = inflater.inflate(R.layout.fragment_search,container,false);
-
-        ImageView refresh = (ImageView) myFragment.findViewById(R.id.refreshButton);
+        ImageView refresh = (ImageView) findViewById(R.id.refreshButton2);
         refresh.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 refreshActivityClick(v);
             }
         });
 
-        //retrieve username
-        SharedPreferences usernamePrefs = getActivity().getSharedPreferences(PREFS2, 0);
-        username = usernamePrefs.getString("usernameKey", "");
-
-
-
-
-        return myFragment;
     }
-
-
 
     private void refreshActivityClick(View v) {
         //Log.d(TAG, "Settings Activity Click");
         //setContentView(R.layout.settings_menu);
-        if(databaseResults != null){
-            databaseResults.clear();
-        }
+
         RetrieveUsernames retrieveUsernamesTask = new RetrieveUsernames();
         retrieveUsernamesTask.execute();
 
@@ -119,7 +74,7 @@ public class SearchFriends extends Fragment {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            pd= new ProgressDialog(getActivity());
+            pd= new ProgressDialog(SearchFriends2.this);
             pd.setCancelable(false);
             pd.setMessage("Loading Users...");
             pd.getWindow().setGravity(Gravity.CENTER);
@@ -134,7 +89,6 @@ public class SearchFriends extends Fragment {
 
                 //client = new Socket("10.202.110.243", 4444); // connect to the server
                 client = new Socket("192.168.0.103", 4444);
-                //client = new Socket("192.168.1.131", 4444);
                 din = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 printwriter = new PrintWriter(client.getOutputStream(), true);
                 printwriter.println("");
@@ -143,22 +97,19 @@ public class SearchFriends extends Fragment {
                 printwriter.println("quit");
                 printwriter.flush();
 
-                //while (din.readLine()!= null){
+
                 String line;
                 while((line = din.readLine())!= null){
-                    //String userNames = din.readLine();
-                    //databaseResults.add(userNames);
-                    //databaseResults.add(din.readLine());
+
                     databaseResults.add(line);
-                    //databaseResults.append(line);
-                    Log.d(TAG, line);
+                    //Log.d(TAG, line);
 
                 }
 
 
                 printwriter.close();
                 din.close();
-                //String userNames = din.readLine();
+
 
                 client.close(); // closing the connection
                 //}
@@ -176,25 +127,13 @@ public class SearchFriends extends Fragment {
         @Override
         protected void onPostExecute(Void result) {
 
-
+            //calling this method to filter the search results from productResults and move them to
+            //filteredProductResults
             super.onPostExecute(result);
-            databaseResults.remove(username);
-            MyCustomAdapter adapter = new MyCustomAdapter(databaseResults, getActivity());
-            //databaseResults.remove(username);
-            //int arrayLength = databaseResults.size();
-
-            //for (int i=0;i<arrayLength;i++) {
-              //  if (databaseResults.equals(databaseResults[i],username)) {
-                    //index = i;
-                    //break;
-                //}
-            //}
-            //if(Arrays.asList(databaseResults).contains(username)) {
-            //}
-
+            MyCustomAdapter adapter = new MyCustomAdapter(databaseResults, getApplicationContext());
 
             //handle listview and assign adapter
-            ListView lView = (ListView) myFragment.findViewById(R.id.usersListView);
+            ListView lView = (ListView) findViewById(R.id.usersListView);
             lView.setAdapter(adapter);
             pd.dismiss();
 
@@ -258,11 +197,8 @@ public class SearchFriends extends Fragment {
                     Log.d(TAG, selectedFromList);
                     EventBus bus = EventBus.getDefault();
                     bus.post(new TextChangedEvent(selectedFromList));
-                    Toast.makeText(getContext(), "User "+ selectedFromList + " has been added to your Friends list", Toast.LENGTH_SHORT).show();
-                    friendname = selectedFromList;
-                    sendFriendUsername sendFriendTask = new sendFriendUsername();
-                    sendFriendTask.execute();
-                    //onNameSetListener.setName(selectedFromList);
+                    Toast.makeText(getApplicationContext(), "User "+ selectedFromList + " has been added to your Friends list", Toast.LENGTH_SHORT).show();
+
 
                 }
             });
@@ -274,44 +210,5 @@ public class SearchFriends extends Fragment {
     }
 
 
-
-    public class sendFriendUsername extends AsyncTask<Void, Void, Void> {
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-
-                //client = new Socket("10.202.110.243", 4444); // connect to the server
-                client = new Socket("192.168.0.103", 4444);
-                //client = new Socket("192.168.1.131", 4444);
-                //din = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                printwriter = new PrintWriter(client.getOutputStream(), true);
-                printwriter.println(username);
-                printwriter.println(friendname);
-                printwriter.println("storeFriendUsername"); // write the message to output stream
-                printwriter.println("quit");
-                printwriter.flush();
-
-                printwriter.close();
-                //din.close();
-                //String userNames = din.readLine();
-
-                client.close(); // closing the connection
-                //}
-
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-
-            }
-            return null;
-        }
-
-    }
-
-
-
-
 }
+

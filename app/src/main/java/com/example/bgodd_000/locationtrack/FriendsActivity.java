@@ -9,7 +9,8 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 
-public class FriendsActivity extends AppCompatActivity {
+
+public class FriendsActivity extends AppCompatActivity{
 
     TabLayout tabLayout;
     ViewPager viewPager;
@@ -21,7 +22,7 @@ public class FriendsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_friends);
 
         viewPager = (ViewPager) findViewById(R.id.viewPager);
-        viewPager.setAdapter(new CustomAdapter(getSupportFragmentManager(),getApplicationContext()));
+        viewPager.setAdapter(new CustomAdapter(getSupportFragmentManager(), getApplicationContext()));
 
         tabLayout = (TabLayout) findViewById(R.id.tabLayout);
         tabLayout.setupWithViewPager(viewPager);
@@ -42,7 +43,6 @@ public class FriendsActivity extends AppCompatActivity {
                 viewPager.setCurrentItem(tab.getPosition());
             }
         });
-
     }
 
 
@@ -76,6 +76,8 @@ public class FriendsActivity extends AppCompatActivity {
             return fragments[position];
         }
     }
+
+
 }
 
 

@@ -1,8 +1,7 @@
 package com.example.bgodd_000.locationtrack;
 
-import android.content.Context;
-
-import java.io.FileOutputStream;
+//import java.io.PrintWriter;
+//import java.net.Socket;
 
 //Structure to hold user profile information
 public class userProfile {
@@ -10,6 +9,10 @@ public class userProfile {
     public boolean male;
     public int month, day, year, feet, inches, weight;
     public boolean initialized;
+
+    //private Socket client;
+    //private PrintWriter printwriter;
+    // String messsage = name;
 
     public userProfile(){
         name = "";
@@ -38,10 +41,12 @@ public class userProfile {
         deviceName = parts[8];
         picPath = parts[9];
         initialized = true;
+
     }
     //print to a string for storage
     public String toString(){
         return name + "," + male + "," + month + "," + day + "," + year + "," + feet + "," + inches + "," + weight + "," + deviceName + "," + picPath;
     }
+
 
 }

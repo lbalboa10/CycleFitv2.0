@@ -8,18 +8,19 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.location.Location;
-import android.nfc.Tag;
-import android.os.SystemClock;
-import android.support.v4.app.FragmentActivity;
+import android.media.AudioManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.SystemClock;
+import android.speech.tts.TextToSpeech;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.os.Handler;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -28,12 +29,8 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polygon;
-import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.Gson;
@@ -44,21 +41,20 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.lang.reflect.Type;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -67,6 +63,20 @@ public class MapsActivity extends FragmentActivity implements
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener{
+
+    //TTS LILIANA BALBOA
+    TextToSpeech tts;
+    int result;
+
+    //TTS/Switch Shared Preferences LILIANA BALBOA
+    public static final String PREFS = "switchPrefs";
+
+    //Server LILIANA BALBOA
+    private Socket client;
+    private PrintWriter printwriter;
+    String username;
+    String Route;
+
 
     //Constants to use pre integration
     //We dont use these now
@@ -180,6 +190,13 @@ public class MapsActivity extends FragmentActivity implements
             connectCFDevice();
         }
 
+
+        //User Controls Audio Feedback Volume LILIANA BALBOA
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        //Retrieve username through intent LILIANA BALBOA
+        Intent intent = getIntent();
+        username = intent.getStringExtra("username");
+
     }
 
     @Override
@@ -292,6 +309,58 @@ public class MapsActivity extends FragmentActivity implements
                         "Current Pedal Speed: %d rpm" ,
                 distance_traveled, curr_speed, prevInc, prevHR, prevRPM));
     }
+
+
+    //Audio Feedback Thread/Loop LILIANA BALBOA
+    private boolean started = false;
+    private Handler handler = new Handler();
+
+    //final boolean isSwitch1Checked;
+    //SharedPreferences switchPrefs = getSharedPreferences(PREFS, 0);
+    //isSwitch1Checked = switchPrefs.getBoolean("switchKey", false);
+
+    private Runnable runnable = new Runnable(){
+        @Override
+        public void run(){
+
+            //boolean isSwitch1Checked;
+            //SharedPreferences switchPrefs = getSharedPreferences(PREFS, 0);
+            //isSwitch1Checked = switchPrefs.getBoolean("switchKey", false);
+
+            String distance = String.format("%.2f", distance_traveled);
+            String speed = String.format("%.2f", curr_speed);
+            String incline = String.format("%.2f", prevInc);
+            String HR = String.format("%4d", prevHR);
+            String PS = String.format("%d", prevRPM);
+            String speedUpdate = "Your current estimated speed is " + speed + "meters per second";
+            String distanceUpdate = "and you have travelled " + distance + "meters";
+            String inclineUpdate = "Your inclination is " + incline + "degrees";
+            String hrUpdate = "your heart rate is " + HR + "beats per minute";
+            String psUpdate = "and your pedal speed is " + PS + "revolutions per minute";
+
+            String text = speedUpdate + distanceUpdate + inclineUpdate + hrUpdate + psUpdate;
+
+
+            //if (isSwitch1Checked == true) {
+
+            if (result == TextToSpeech.LANG_NOT_SUPPORTED || result == TextToSpeech.LANG_MISSING_DATA) {
+
+                Toast.makeText(getApplicationContext(),
+                        "Audio Feedback Feature not Supported on Your Device",
+                        Toast.LENGTH_SHORT).show();
+            } else {
+
+                tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+
+            }
+
+            if (started){
+                handler.postDelayed(this, 30000);
+            }
+        }
+    };
+
+
     //Disconnection from service
     @Override
     public void onConnectionSuspended(int i) {
@@ -358,6 +427,37 @@ public class MapsActivity extends FragmentActivity implements
 //            }
 //            Polyline route = mMap.addPolyline(new PolylineOptions());
 //            route.setPoints(routepoints);
+
+
+            //Initialize TTS Engine LILIANA BALBOA
+            tts = new TextToSpeech(MapsActivity.this, new TextToSpeech.OnInitListener() {
+
+                @Override
+                public void onInit(int status) {
+                    if (status == TextToSpeech.SUCCESS) {
+                        result = tts.setLanguage(Locale.US);
+                    } else {
+                        Toast.makeText(getApplicationContext(),
+                                "Audio Feedback Feature not Supported on Your Device",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+            //Audio Feedback on or off? LILIANA BALBOA
+            boolean isSwitch1Checked;
+            SharedPreferences switchPrefs = getSharedPreferences(PREFS, 0);
+            isSwitch1Checked = switchPrefs.getBoolean("switchKey", false);
+
+            //Start Audio Feedback Thread/Loop LILIANA BALBOA
+            if (isSwitch1Checked) {
+                started = true;
+                handler.postDelayed(runnable, 30000);
+            }
+            else{
+                tts.stop();
+                tts.shutdown();
+            }
         }
     }
     //Stop tracking a route
@@ -380,6 +480,15 @@ public class MapsActivity extends FragmentActivity implements
             startButton.setText("Start");
             saveRouteInfo();
         }else if(running){
+
+            //Stop Audio Feedback Thread/Loop LILIANA BALBOA
+            started = false;
+            handler.removeCallbacks(runnable);
+
+            //Stop TTS engine LILIANA BALBOA
+            tts.stop();
+            tts.shutdown();
+
             rt.end = new Date();
             //Calculate summary data
             double route_time = (stop_time - start_time)/1000000000;
@@ -419,6 +528,38 @@ public class MapsActivity extends FragmentActivity implements
         }
 
     }
+
+    //Send User's Route Summary to Server LILIANA BALBOA
+    public class SendRoute extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+
+                //client = new Socket("10.202.111.126", 4444); // connect to the server
+                client = new Socket("192.168.0.103", 4444);
+                //client = new Socket("192.168.1.131", 4444);
+                printwriter = new PrintWriter(client.getOutputStream(), true);
+                printwriter.println(username);
+                printwriter.println(Route);// write the message to output stream
+                printwriter.println("storeRoute");
+                printwriter.println("quit");
+                printwriter.flush();
+                printwriter.close();
+                //client.close(); // closing the connection
+
+
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+    }
+
+
     //Save route data to memory and pull up the route summary page
     public void saveRouteInfo(){
         //calculate avgHR, RPM, Incline, and calorie burn
@@ -532,6 +673,12 @@ public class MapsActivity extends FragmentActivity implements
         Gson gson = new GsonBuilder()
                 .registerTypeAdapter(Date.class, ser).create();
         String jsonRT = gson.toJson(rt);
+
+        //Send Route Summary to Server LILIANA BALBOA
+        Route = jsonRT;
+        SendRoute sendRouteTask = new SendRoute();
+        sendRouteTask.execute();
+
         smallRouteSummary smallRT = new smallRouteSummary(rt.shortToString());
         String smallJsonRT = gson.toJson(smallRT);
         ContextWrapper cw = new ContextWrapper(getApplicationContext());

@@ -7,6 +7,7 @@ import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.location.Location;
 import android.media.AudioManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
@@ -39,7 +40,10 @@ import com.google.gson.JsonSerializer;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.lang.reflect.Type;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
@@ -60,6 +64,13 @@ public class MapsNBTActivity extends FragmentActivity implements
 
     //TTS/Switch Shared Preferences LILIANA BALBOA
     public static final String PREFS = "switchPrefs";
+
+    //Server LILIANA BALBOA
+    private Socket client;
+    private PrintWriter printwriter;
+    String username;
+    String Route;
+
 
     //Constants to use pre integration
     int DEFALUT_HR = 80;
@@ -163,6 +174,9 @@ public class MapsNBTActivity extends FragmentActivity implements
 
         //User Controls Audio Feedback Volume LILIANA BALBOA
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+        Intent intent = getIntent();
+        username = intent.getStringExtra("username");
 
     }
 
@@ -327,7 +341,8 @@ public class MapsNBTActivity extends FragmentActivity implements
             //isSwitch1Checked = switchPrefs.getBoolean("switchKey", false);
 
             String distance = String.format("%.2f", distance_traveled);
-            String speedUpdate = "Your current speed is: " + curr_speed + "meters per second";
+            String speed = String.format("%.2f", curr_speed);
+            String speedUpdate = "Your current speed is: " + speed + "meters per second";
             String distanceUpdate = "And you have travelled " + distance + "meters";
             String text = speedUpdate + distanceUpdate;
 
@@ -447,6 +462,8 @@ public class MapsNBTActivity extends FragmentActivity implements
             tts.stop();
             tts.shutdown();
 
+
+
             rt.end = new Date();
             //Calculate summary data
             double route_time = (stop_time - start_time)/1000000000;
@@ -464,7 +481,9 @@ public class MapsNBTActivity extends FragmentActivity implements
             int min = (int) hr_rem / 60;
             double sec = hr_rem % 60;
             resultText.setText(String.format("Route Ended:\nTotal Distance Traveled: %.2fm\nTotal time: %d hr %d min %.2fsec\n Average Speed: %.2fm/s", distance_traveled, hours, min, sec, avg_speed));
-            //Log.d(TAG, rt.toString());
+            Log.d(TAG, rt.toString());
+
+
 
             //reset the global data
             distance_traveled = 0;
@@ -486,6 +505,47 @@ public class MapsNBTActivity extends FragmentActivity implements
         }
 
     }
+
+
+
+    //Send Route Summary to Server LILIANA BALBOA
+    public class SendMessage extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+
+                //if(initialized) {
+
+                //client = new Socket("10.202.111.126", 4444); // connect to the server
+                client = new Socket("192.168.0.103", 4444);
+                //client = new Socket("192.168.1.131", 4444);
+                printwriter = new PrintWriter(client.getOutputStream(), true);
+                printwriter.println(username);
+                printwriter.println(Route);// write the message to output stream
+                //printwriter.println("null");
+                printwriter.println("storeRoute");
+                printwriter.println("quit");
+                printwriter.flush();
+                printwriter.close();
+                //client.close(); // closing the connection
+                //}
+
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+    }
+
+
+
+
+
+
     //Save route data to memory and pull up the route summary page
     public void saveRouteInfo(){
         //calculate avgHR, RPM, Incline, and calorie burn
@@ -584,6 +644,7 @@ public class MapsNBTActivity extends FragmentActivity implements
         resultText.setText("New Route\nDistance Traveled: 0m/s");
     }
 
+
     //Print out the route data to a text file
     //Prints out full version and summary version used in route planning functionality
     public void saveRouteToFile(){
@@ -599,6 +660,13 @@ public class MapsNBTActivity extends FragmentActivity implements
         Gson gson = new GsonBuilder()
                 .registerTypeAdapter(Date.class, ser).create();
         String jsonRT = gson.toJson(rt);
+
+        Route = jsonRT;
+
+        //Send Route Summary LILIANA BALBOA
+        SendMessage sendMessageTask = new SendMessage();
+        sendMessageTask.execute();
+
         smallRouteSummary smallRT = new smallRouteSummary(rt.shortToString());
         String smallJsonRT = gson.toJson(smallRT);
         ContextWrapper cw = new ContextWrapper(getApplicationContext());

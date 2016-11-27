@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.provider.MediaStore;
@@ -30,6 +31,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.Map;
 import java.util.TreeMap;
@@ -43,6 +47,13 @@ public class MainMenuActivity extends AppCompatActivity {
 
     //Audio Feedback Switch Preferences LILIANA BALBOA
     public static final String PREFS = "switchPrefs";
+
+    //SearchFriends Pref LILIANA BALBOA
+    public static final String PREFS2 = "usernamePrefs";
+
+    //Server LILIANA BALBOA
+    private Socket client;
+    private PrintWriter printwriter;
 
     public static final String TAG = MapsActivity.class.getSimpleName();
 
@@ -75,11 +86,19 @@ public class MainMenuActivity extends AppCompatActivity {
         Log.d(TAG, "Track Route Click");
         if(user.initialized){
             //User must be initialized to track a route
-            //Intent mapintent = new Intent(this, MapsActivity.class);
-            //startActivity(mapintent);
+            Intent mapintent = new Intent(this, MapsActivity.class);
+
+            //Pass username to maps activity LILIANA BALBOA
+            mapintent.putExtra("username",user.name);
+
+            startActivity(mapintent);
             //Debug - nonBTversion of routeTracking:
-            Intent mapNBTintent = new Intent(this, MapsNBTActivity.class);
-            startActivity(mapNBTintent);
+            //Intent mapNBTintent = new Intent(this, MapsNBTActivity.class);
+            //startActivity(mapNBTintent);
+
+            //LILIANA BALBOA
+            //mapNBTintent.putExtra("username",user.name);
+
             Globals.user = user;
 
 
@@ -181,6 +200,7 @@ public class MainMenuActivity extends AppCompatActivity {
         //load user values
         if(user.initialized){
             fillTextFields();
+
         }
         //load profile picture if it exists
         if(!user.picPath.equals("blank")){
@@ -201,6 +221,11 @@ public class MainMenuActivity extends AppCompatActivity {
             setContentView(R.layout.activity_main_menu);
             saveUser();
             setMainMenuEventListeners();
+
+            //Send User's Name to Server LILIANA BALBOA
+            SendName sendNameTask = new SendName();
+            sendNameTask.execute();
+
             if(!user.picPath.equals("blank")){
                 ImageView img = (ImageView) findViewById(R.id.userPicMain);
                 loadImageFromStorage(img, user.picPath);
@@ -215,6 +240,13 @@ public class MainMenuActivity extends AppCompatActivity {
         Log.d(TAG, "Friends Activity Click");
         //setContentView(R.layout.activity_friends);
         startActivity(new Intent(MainMenuActivity.this, FriendsActivity.class));
+
+        //send username to SearchFriends fragment
+        SharedPreferences usernamePrefs = getSharedPreferences(PREFS2,0);
+        SharedPreferences.Editor usernameFile = usernamePrefs.edit();
+        usernameFile.putString("usernameKey", user.name);
+        usernameFile.commit();
+        //startActivity(new Intent(MainMenuActivity.this, FriendsActivity2.class));
         //setfriendsActivityListeners();
     }
 
@@ -313,7 +345,7 @@ public class MainMenuActivity extends AppCompatActivity {
     }
     */
 
-    //Liliana Settings Activity Button Listeners
+    //Settings Activity Button Listeners LILIANA BALBOA
     private void setsettingsProfEventListeners(){
         ImageView settingsProfBackToMain = (ImageView) findViewById(R.id.settings_prof_back_arrow);
         settingsProfBackToMain.setOnClickListener(new View.OnClickListener() {
@@ -328,6 +360,7 @@ public class MainMenuActivity extends AppCompatActivity {
         final SharedPreferences switchPrefs = getSharedPreferences(PREFS,0);
         final SharedPreferences.Editor switchValuesFile = switchPrefs.edit();
         switch1.setChecked(switchPrefs.getBoolean("switchKey", false)); //set switch1 to false (default)
+        //get boolean from switchKey File or set it to false if find nothing
         //assuming the file starts off as false by default, get that value and store it in switch1
 
 
@@ -346,7 +379,7 @@ public class MainMenuActivity extends AppCompatActivity {
                     switchValuesFile.putBoolean("switchKey", isChecked);
                     switchValuesFile.commit();
                 }
-                //switch1.setChecked(switchPrefs.getBoolean("switchKey", false)); //get boolean from switchKey File or set it to false if find nothing
+
             }
         });
     }
@@ -524,6 +557,37 @@ public class MainMenuActivity extends AppCompatActivity {
         user.initialized = true;
         Globals.user = user;
         return true;
+    }
+
+
+    //Send User's Name to Server LILIANA BALBOA
+    public class SendName extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                //if(initialized) {
+
+                    //client = new Socket("10.202.111.201", 4444); // connect to the server
+                    client = new Socket("192.168.0.103", 4444);
+                    printwriter = new PrintWriter(client.getOutputStream(), true);
+                    printwriter.println(user.name); // write the message to output stream
+                    printwriter.println("");
+                    printwriter.println("storeUsername");
+                    printwriter.println("quit");
+                    printwriter.flush();
+                    printwriter.close();
+                    //client.close(); // closing the connection
+                //}
+
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
     }
 
     //Get picture from gallery

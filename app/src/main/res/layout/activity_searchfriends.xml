@@ -22,24 +22,19 @@
         android:layout_centerHorizontal="true"
         android:dividerHeight="5dp"
         android:divider="#E6E6E6"
-        android:layout_below="@+id/view1"
-        android:paddingTop="10dp" />
+        android:layout_below="@+id/view1" />
 
     <ImageView
-        android:layout_width="200sp"
-        android:layout_height="200sp"
+        android:layout_width="80sp"
+        android:layout_height="80sp"
         android:layout_gravity="left|center_horizontal"
-        android:id="@+id/refreshButton"
+        android:id="@+id/refreshButton2"
         android:clickable="true"
         android:src="@mipmap/refresh_launcher"
-        android:layout_alignBottom="@+id/searchView"
-        android:layout_toEndOf="@+id/searchView" />
-
-    <SearchView
-        android:layout_width="275dp"
-        android:layout_height="wrap_content"
-        android:id="@+id/searchView"
-        android:layout_alignTop="@+id/view1"
-        android:layout_alignParentStart="true" />
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_toEndOf="@+id/view1"
+        android:layout_above="@+id/usersListView"
+        android:onClick="refreshActivityClick" />
 
 </RelativeLayout>
